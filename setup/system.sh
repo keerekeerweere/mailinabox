@@ -9,12 +9,12 @@ source setup/functions.sh # load our functions
 # If the hostname is not correctly resolvable sudo can't be used. This will result in
 # errors during the install
 #
+
 # First set the hostname in the configuration file, then activate the setting
-
-echo $USER
-#echo $PRIMARY_HOSTNAME > /etc/hostname
-#hostname $PRIMARY_HOSTNAME
-
+if [ -z "${MAIL_IN_A_BOX_CONTAINER:-}" ]; then
+    echo $PRIMARY_HOSTNAME > /etc/hostname
+    hostname $PRIMARY_HOSTNAME
+fi
 # ### Fix permissions
 
 # The default Ubuntu Bionic image on Scaleway throws warnings during setup about incorrect
