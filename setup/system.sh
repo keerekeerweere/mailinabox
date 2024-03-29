@@ -11,8 +11,9 @@ source setup/functions.sh # load our functions
 #
 # First set the hostname in the configuration file, then activate the setting
 
-echo $PRIMARY_HOSTNAME > /etc/hostname
-hostname $PRIMARY_HOSTNAME
+echo $USER
+#echo $PRIMARY_HOSTNAME > /etc/hostname
+#hostname $PRIMARY_HOSTNAME
 
 # ### Fix permissions
 
