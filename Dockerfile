@@ -18,6 +18,9 @@ ENV STORAGE_ROOT=/home/${STORAGE_USER}
 
 ENV NONINTERACTIVE=1
 
+#managed by container runtime, TODO: must be done !
+ENV DISABLE_FIREWALL=1
+
 
 RUN groupadd ${MAIL_IN_A_BOX_USER}
 RUN useradd -rm -d /home/${MAIL_IN_A_BOX_USER} -s /bin/bash -g root -G sudo -u 1001 ${MAIL_IN_A_BOX_USER} -p "$(openssl passwd -1 ${MAIL_IN_A_BOX_PW})"
@@ -46,10 +49,11 @@ RUN echo '${MAIL_IN_A_BOX_USER} ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # start the installer
 #run as sudo user
-ADD https://mailinabox.email/setup.sh /home/${MAIL_IN_A_BOX_USER}/
+#ADD https://mailinabox.email/setup.sh /home/${MAIL_IN_A_BOX_USER}/
+ADD setup.sh /home/${MAIL_IN_A_BOX_USER}/
 RUN chown ${MAIL_IN_A_BOX_USER} /home/${MAIL_IN_A_BOX_USER}/setup.sh
 RUN chmod u+x /home/${MAIL_IN_A_BOX_USER}/setup.sh
 
 USER  ${MAIL_IN_A_BOX_USER}
-CMD ["sh", "-c", "sudo -E /home/${MAIL_IN_A_BOX_USER}/setup.sh"]
+RUN ["sh", "-c", "sudo -E /home/${MAIL_IN_A_BOX_USER}/setup.sh"]
 

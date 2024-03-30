@@ -234,6 +234,7 @@ dd if=/dev/random of=/dev/urandom bs=1 count=32 2> /dev/null
 # is really any good on virtualized systems, we'll also seed from Ubuntu's
 # pollinate servers:
 
+echo pollinate from ubuntu server ...
 pollinate  -q -r
 
 # Between these two, we really ought to be all set.
@@ -347,9 +348,11 @@ fi
 # which is where bind9 will be running. Obviously don't do this before
 # installing bind9 or else apt won't be able to resolve a server to
 # download bind9 from.
-rm -f /etc/resolv.conf
-tools/editconf.py /etc/systemd/resolved.conf DNSStubListener=no
-echo "nameserver 127.0.0.1" > /etc/resolv.conf
+if [ -z "${MAIL_IN_A_BOX_CONTAINER:-}" ]; then
+    rm -f /etc/resolv.conf
+    tools/editconf.py /etc/systemd/resolved.conf DNSStubListener=no
+    echo "nameserver 127.0.0.1" > /etc/resolv.conf
+fi
 
 # Restart the DNS services.
 
