@@ -11,15 +11,33 @@ fi
 # Check that we are running on Ubuntu 22.04 LTS (or 22.04.xx).
 # Pull in the variables defined in /etc/os-release but in a
 # namespace to avoid polluting our variables.
-source <(cat /etc/os-release | sed s/^/OS_RELEASE_/)
-if [ "${OS_RELEASE_ID:-}" != "ubuntu" ] || [ "${OS_RELEASE_VERSION_ID:-}" != "22.04" ]; then
-	echo "Mail-in-a-Box only supports being installed on Ubuntu 22.04, sorry. You are running:"
-	echo
-	echo "${OS_RELEASE_ID:-"Unknown linux distribution"} ${OS_RELEASE_VERSION_ID:-}"
-	echo
-	echo "We can't write scripts that run on every possible setup, sorry."
-	exit 1
+
+source <(sed 's/^/OS_RELEASE_/' /etc/os-release)
+
+is_ubuntu_2204=false
+is_debian_trixie=false
+
+if [ "${OS_RELEASE_ID:-}" = "ubuntu" ] && [ "${OS_RELEASE_VERSION_ID:-}" = "22.04" ]; then
+  is_ubuntu_2204=true
 fi
+
+# Debian 13 stable is "trixie"
+if [ "${OS_RELEASE_ID:-}" = "debian" ] && { \
+     [ "${OS_RELEASE_VERSION_ID:-}" = "13" ] || \
+     [ "${OS_RELEASE_VERSION_CODENAME:-}" = "trixie" ]; \
+   }; then
+  is_debian_trixie=true
+fi
+
+if ! $is_ubuntu_2204 && ! $is_debian_trixie; then
+  echo "Mail-in-a-Box only supports being installed on Ubuntu 22.04 or Debian 13 (trixie), sorry. You are running:"
+  echo
+  echo "${OS_RELEASE_ID:-"Unknown linux distribution"} ${OS_RELEASE_VERSION_ID:-}"
+  echo
+  echo "We can't write scripts that run on every possible setup, sorry."
+  exit 1
+fi
+
 
 # Check that we have enough memory.
 #
