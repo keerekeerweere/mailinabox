@@ -65,7 +65,7 @@ if [ ! -d "$HOME/mailinabox" ]; then
 	fi
 
 	if [ "$SOURCE" == "" ]; then
-		SOURCE=https://https://github.com/keerekeerweere/mailinabox
+		SOURCE=https://github.com/keerekeerweere/mailinabox
 	fi
 
 	echo "Downloading Mail-in-a-Box $TAG. . ."
