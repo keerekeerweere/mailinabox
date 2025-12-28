@@ -27,6 +27,7 @@ if [ -z "$TAG" ]; then
 	elif [ "$UBUNTU_VERSION" == "Debian GNU/Linux 13 (trixie)" ]; then
 		# This machine is running Debian GNU/Linux 13 (trixie), which is supported by
 		# Mail-in-a-Box versions 60 and later.
+		echo "No support for Debian / trixie, trying anyway."
 		TAG=v73
 	elif [ "$UBUNTU_VERSION" == "Ubuntu 18.04 LTS" ]; then
 		# This machine is running Ubuntu 18.04, which is supported by
