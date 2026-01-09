@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  database:
+    build: ./containers/database
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: mailinabox
+      POSTGRES_USER: mailinabox
+      POSTGRES_PASSWORD: mailinabox_password
+    networks:
+      - mailinabox_internal
+
+  management:
+    build: ./containers/management
+    environment:
+      - DATABASE_URL=postgresql://mailinabox:mailinabox_password@database/mailinabox
+      - SECRET_KEY=development_secret_key_change_in_production
+    volumes:
+      - config_data:/app/data
+      - mail_data:/var/mail
+    depends_on:
+      - database
+    networks:
+      - mailinabox_internal
+      - mailinabox_external
+    ports:
+      - "8080:8080"
+
+  postfix:
+    build: ./containers/postfix
+    volumes:
+      - mail_queue:/var/spool/postfix
+      - mail_data:/var/mail
+      - config_data:/etc/postfix
+    depends_on:
+      - database
+      - management
+    networks:
+      - mailinabox_internal
+      - mailinabox_external
+    ports:
+      - "25:25"   # SMTP
+      - "587:587" # SMTP submission
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - MYSQL_HOST=database
+      - MYSQL_USER=mailinabox
+      - MYSQL_PASSWORD=mailinabox_password
+      - MYSQL_DATABASE=mailinabox
+
+  dovecot:
+    build: ./containers/dovecot
+    volumes:
+      - mail_data:/var/mail
+      - config_data:/etc/dovecot
+    depends_on:
+      - postfix
+      - database
+    networks:
+      - mailinabox_internal
+      - mailinabox_external
+    ports:
+      - "143:143"  # IMAP
+      - "993:993"  # IMAPS
+      - "110:110"  # POP3
+      - "995:995"  # POP3S
+    environment:
+      - MYSQL_HOST=database
+      - MYSQL_USER=mailinabox
+      - MYSQL_PASSWORD=mailinabox_password
+      - MYSQL_DATABASE=mailinabox
+
+  nginx:
+    build: ./containers/nginx
+    volumes:
+      - nginx_logs:/var/log/nginx
+      - letsencrypt_certs:/etc/letsencrypt:ro
+      - static_files:/var/www/html
+    depends_on:
+      - management
+      - dovecot
+    networks:
+      - mailinabox_internal
+      - mailinabox_external
+    ports:
+      - "80:80"
+      - "443:443"
+
+  letsencrypt:
+    build: ./containers/letsencrypt
+    volumes:
+      - letsencrypt_certs:/etc/letsencrypt
+      - letsencrypt_logs:/var/log/letsencrypt
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - nginx
+    networks:
+      - mailinabox_internal
+    environment:
+      - DOMAINS=mailinabox.lan
+      - EMAIL=admin@mailinabox.lan
+
+networks:
+  mailinabox_internal:
+    driver: bridge
+    internal: true
+  mailinabox_external:
+    driver: bridge
+
+volumes:
+  db_data:
+  config_data:
+  mail_data:
+  mail_queue:
+  nginx_logs:
+  letsencrypt_certs:
+  letsencrypt_logs:
+  static_files:

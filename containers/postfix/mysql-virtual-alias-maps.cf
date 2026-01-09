@@ -1,0 +1,5 @@
+user = mailinabox
+password = mailinabox_password
+hosts = database
+dbname = mailinabox
+query = SELECT destination FROM virtual_aliases WHERE source='%s'

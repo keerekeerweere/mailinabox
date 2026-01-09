@@ -1,0 +1,5 @@
+user = mailinabox
+password = mailinabox_password
+hosts = database
+dbname = mailinabox
+query = SELECT 1 FROM virtual_users WHERE email='%s'
