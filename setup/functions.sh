@@ -206,6 +206,34 @@ function wget_verify {
 	fi
 }
 
+function is_lxc_container() {
+	# Detect if running inside an LXC container
+	# Multiple detection methods for robustness
+	if [ -f /proc/1/environ ] && grep -q "container=lxc" /proc/1/environ 2>/dev/null; then
+		return 0
+	fi
+	if [ -f /.lxc-config ] || [ -d /dev/lxc ]; then
+		return 0
+	fi
+	if [ -f /proc/1/cgroup ] && grep -q "lxc" /proc/1/cgroup 2>/dev/null; then
+		return 0
+	fi
+	# Check for systemd in container mode
+	if [ -f /run/systemd/container ] && grep -q "lxc" /run/systemd/container 2>/dev/null; then
+		return 0
+	fi
+	return 1
+}
+
+function is_privileged_container() {
+	# Check if container has privileged capabilities
+	# This is a basic check - in practice, this would need more sophisticated detection
+	if [ -w /proc/sys ]; then
+		return 0  # Can write to /proc/sys, likely privileged
+	fi
+	return 1
+}
+
 function git_clone {
 	# Clones a git repository, checks out a particular commit or tag,
 	# and moves the repository (or a subdirectory in it) to some path.

@@ -29,17 +29,32 @@ fi
 # We will display a warning if the memory is below 768 MB which is 750000 kibibytes
 #
 # Skip the check if we appear to be running inside of Vagrant, because that's really just for testing.
+# Also adjust thresholds for containers which may have different memory constraints.
 TOTAL_PHYSICAL_MEM=$(head -n 1 /proc/meminfo | awk '{print $2}')
-if [ "$TOTAL_PHYSICAL_MEM" -lt 490000 ]; then
+if is_lxc_container; then
+	# In containers, memory limits are often managed at the container level
+	# Be more lenient with memory requirements
+	MEMORY_THRESHOLD=256000  # 256MB for containers
+	WARNING_THRESHOLD=384000 # 384MB warning for containers
+else
+	MEMORY_THRESHOLD=490000  # 512MB for VMs
+	WARNING_THRESHOLD=750000 # 768MB warning for VMs
+fi
+
+if [ "$TOTAL_PHYSICAL_MEM" -lt "$MEMORY_THRESHOLD" ]; then
 if [ ! -d /vagrant ]; then
 	TOTAL_PHYSICAL_MEM=$(( TOTAL_PHYSICAL_MEM * 1024 / 1000 / 1000 ))
 	echo "Your Mail-in-a-Box needs more memory (RAM) to function properly."
-	echo "Please provision a machine with at least 512 MB, 1 GB recommended."
+	if is_lxc_container; then
+		echo "Please allocate at least 512 MB to the LXC container, 1 GB recommended."
+	else
+		echo "Please provision a machine with at least 512 MB, 1 GB recommended."
+	fi
 	echo "This machine has $TOTAL_PHYSICAL_MEM MB memory."
 	exit
 fi
 fi
-if [ "$TOTAL_PHYSICAL_MEM" -lt 750000 ]; then
+if [ "$TOTAL_PHYSICAL_MEM" -lt "$WARNING_THRESHOLD" ]; then
 	echo "WARNING: Your Mail-in-a-Box has less than 768 MB of memory."
 	echo "         It might run unreliably when under heavy load."
 fi

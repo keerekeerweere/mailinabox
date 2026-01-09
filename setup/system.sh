@@ -38,8 +38,9 @@ chmod g-w /etc /etc/default /usr
 # - Check if a swapfile already exists
 # - Check if the root file system is not btrfs, might be an incompatible version with
 #   swapfiles. User should handle it them selves.
-# - Check the memory requirements
+# - Check if the memory requirements
 # - Check available diskspace
+# - Check if running in container (skip swap creation)
 
 # See https://www.digitalocean.com/community/tutorials/how-to-add-swap-on-ubuntu-14-04
 # for reference
@@ -55,7 +56,8 @@ if
 	[ ! -e /swapfile ] &&
 	[ -z "$ROOT_IS_BTRFS" ] &&
 	[ "$TOTAL_PHYSICAL_MEM" -lt 1900000 ] &&
-	[ "$AVAILABLE_DISK_SPACE" -gt 5242880 ]
+	[ "$AVAILABLE_DISK_SPACE" -gt 5242880 ] &&
+	! is_lxc_container
 then
 	echo "Adding a swap file to the system..."
 
@@ -271,26 +273,53 @@ EOF
 # a kernel that supports iptables. To avoid error-like output in these cases, #NODOC
 # we skip this if the user sets DISABLE_FIREWALL=1. #NODOC
 if [ -z "${DISABLE_FIREWALL:-}" ]; then
-	# Install `ufw` which provides a simple firewall configuration.
-	apt_install ufw
+	if is_lxc_container; then
+		echo "=================================================================="
+		echo "Running in LXC container - firewall managed at host level"
+		echo ""
+		echo "Required firewall rules (apply at host level):"
+		echo "- Allow SSH (port 22) - inbound"
+		echo "- Allow HTTP (port 80) - inbound"
+		echo "- Allow HTTPS (port 443) - inbound"
+		echo "- Allow SMTP (port 25) - inbound/outbound"
+		echo "- Allow IMAP (port 143, 993) - inbound"
+		echo "- Allow POP3 (port 110, 995) - inbound (if needed)"
+		echo "- Allow DNS (port 53) - outbound"
+		echo ""
+		echo "Example UFW commands for host:"
+		echo "  ufw allow 22/tcp"
+		echo "  ufw allow 80/tcp"
+		echo "  ufw allow 443/tcp"
+		echo "  ufw allow 25/tcp"
+		echo "  ufw allow 143/tcp"
+		echo "  ufw allow 993/tcp"
+		echo "  ufw allow out 53"
+		echo ""
+		echo "For LXC containers, configure port forwarding in your LXC config"
+		echo "=================================================================="
+	else
+		# Standard UFW setup for VMs
+		# Install `ufw` which provides a simple firewall configuration.
+		apt_install ufw
 
-	# Allow incoming connections to SSH.
-	ufw_limit ssh;
+		# Allow incoming connections to SSH.
+		ufw_limit ssh;
 
-	# ssh might be running on an alternate port. Use sshd -T to dump sshd's #NODOC
-	# settings, find the port it is supposedly running on, and open that port #NODOC
-	# too. #NODOC
-	SSH_PORT=$(sshd -T 2>/dev/null | grep "^port " | sed "s/port //" | tr '\n' ' ') #NODOC
-	if [ -n "$SSH_PORT" ]; then
-	    for port in $SSH_PORT; do
-	        if [ "$port" != "22" ]; then
-	            echo "Opening alternate SSH port $port." #NODOC
-                ufw_limit "$port" #NODOC
-            fi
-        done
+		# ssh might be running on an alternate port. Use sshd -T to dump sshd's #NODOC
+		# settings, find the port it is supposedly running on, and open that port #NODOC
+		# too. #NODOC
+		SSH_PORT=$(sshd -T 2>/dev/null | grep "^port " | sed "s/port //" | tr '\n' ' ') #NODOC
+		if [ -n "$SSH_PORT" ]; then
+		    for port in $SSH_PORT; do
+		        if [ "$port" != "22" ]; then
+		            echo "Opening alternate SSH port $port." #NODOC
+	                ufw_limit "$port" #NODOC
+	            fi
+	        done
+		fi
+
+		ufw --force enable;
 	fi
-
-	ufw --force enable;
 fi #NODOC
 
 # ### Local DNS Service

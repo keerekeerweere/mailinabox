@@ -66,6 +66,34 @@ Begin the installation.
 
 	$ sudo setup/start.sh
 
+### LXC Container Support (Experimental)
+
+Mail-in-a-Box can now run in LXC containers with Ubuntu 22.04. Container support includes:
+
+- Automatic detection of container environment
+- Container-aware firewall configuration (managed at host level)
+- Adjusted memory requirements for containers
+- Optional swap file creation
+
+**Requirements for LXC containers:**
+- Privileged LXC container
+- Ubuntu 22.04 base image
+- Proper network configuration (bridge networking recommended)
+- Host-level firewall rules for required ports
+
+**Host firewall configuration needed:**
+```
+ufw allow 22/tcp    # SSH
+ufw allow 80/tcp    # HTTP
+ufw allow 443/tcp   # HTTPS
+ufw allow 25/tcp    # SMTP
+ufw allow 143/tcp   # IMAP
+ufw allow 993/tcp   # IMAPS
+ufw allow out 53    # DNS
+```
+
+See `LXC_COMPATIBILITY.md` for detailed information about container support.
+
 The installation will install, uninstall, and configure packages to turn the machine into a working, good mail server.
 
 For help, DO NOT contact Josh directly --- I don't do tech support by email or tweet (no exceptions).
