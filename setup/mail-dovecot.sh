@@ -45,7 +45,7 @@ apt_install \
 # - https://www.dovecot.org/list/dovecot/2012-August/137569.html
 # - https://www.dovecot.org/list/dovecot/2011-December/132455.html
 tools/editconf.py /etc/dovecot/conf.d/10-master.conf \
-	default_process_limit="$(($(nproc) * 250))" \
+	default_process_limit="$(if is_lxc_container; then echo 1000; else echo $(($(nproc) * 250)); fi)" \
 	default_vsz_limit="$(($(free -tm  | tail -1 | awk '{print $2}') / 3))M" \
 	log_path=/var/log/mail.log
 
@@ -54,8 +54,13 @@ tools/editconf.py /etc/dovecot/conf.d/10-master.conf \
 # See http://www.dovecot.org/pipermail/dovecot/2013-March/088834.html.
 # A reboot is required for this to take effect (which we don't do as
 # as a part of setup). Test with `cat /proc/sys/fs/inotify/max_user_instances`.
-tools/editconf.py /etc/sysctl.conf \
-	fs.inotify.max_user_instances=1024
+# Skip in unprivileged containers where sysctl modification may not be allowed.
+if ! is_lxc_container || is_privileged_container; then
+	tools/editconf.py /etc/sysctl.conf \
+		fs.inotify.max_user_instances=1024
+	# Try to apply the setting immediately
+	sysctl -p /etc/sysctl.conf 2>/dev/null || echo "Warning: Could not apply sysctl settings"
+fi
 
 # Set the location where we'll store user mailboxes. '%d' is the domain name and '%n' is the
 # username part of the user's email address. We'll ensure that no bad domains or email addresses

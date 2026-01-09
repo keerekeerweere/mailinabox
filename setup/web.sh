@@ -105,10 +105,10 @@ mkdir -p /var/lib/mailinabox
 chmod a+rx /var/lib/mailinabox
 cat conf/ios-profile.xml \
 	| sed "s/PRIMARY_HOSTNAME/$PRIMARY_HOSTNAME/" \
-	| sed "s/UUID1/$(cat /proc/sys/kernel/random/uuid)/" \
-	| sed "s/UUID2/$(cat /proc/sys/kernel/random/uuid)/" \
-	| sed "s/UUID3/$(cat /proc/sys/kernel/random/uuid)/" \
-	| sed "s/UUID4/$(cat /proc/sys/kernel/random/uuid)/" \
+	| sed "s/UUID1/$(generate_uuid)/" \
+	| sed "s/UUID2/$(generate_uuid)/" \
+	| sed "s/UUID3/$(generate_uuid)/" \
+	| sed "s/UUID4/$(generate_uuid)/" \
 	 > /var/lib/mailinabox/mobileconfig.xml
 chmod a+r /var/lib/mailinabox/mobileconfig.xml
 

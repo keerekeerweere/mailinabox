@@ -234,6 +234,20 @@ function is_privileged_container() {
 	return 1
 }
 
+function generate_uuid() {
+	# Generate a UUID, with fallbacks for restricted environments
+	if command -v uuidgen >/dev/null 2>&1; then
+		uuidgen
+	elif [ -r /proc/sys/kernel/random/uuid ]; then
+		cat /proc/sys/kernel/random/uuid
+	else
+		# Fallback to openssl rand for UUID-like string
+		openssl rand -hex 16 2>/dev/null | sed 's/\(........\)\(....\)\(....\)\(....\)\(............\)/\1-\2-\3-\4-\5/' || \
+		# Ultimate fallback - timestamp-based pseudo-UUID
+		echo "$(date +%s)-$(od -An -N4 -tu4 /dev/urandom 2>/dev/null | tr -d ' ' || echo 1234)"
+	fi
+}
+
 function git_clone {
 	# Clones a git repository, checks out a particular commit or tag,
 	# and moves the repository (or a subdirectory in it) to some path.

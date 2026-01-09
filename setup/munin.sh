@@ -51,11 +51,15 @@ munin-node-configure --shell --remove-also 2>/dev/null | sh || /bin/true
 find /etc/munin/plugins/ -lname /usr/share/munin/plugins/ntp_ -print0 | xargs -0 /bin/rm -f
 
 # Deactivate monitoring of network interfaces that are not up. Otherwise we can get a lot of empty charts.
+# In containers, interface detection may be less reliable, so be more conservative.
 for f in $(find /etc/munin/plugins/ \( -lname /usr/share/munin/plugins/if_ -o -lname /usr/share/munin/plugins/if_err_ -o -lname /usr/share/munin/plugins/bonding_err_ \)); do
-	IF=$(echo "$f" | sed s/.*_//);
-	if ! grep -qFx up "/sys/class/net/$IF/operstate" 2>/dev/null; then
-		rm "$f";
-	fi;
+    IF=$(echo "$f" | sed s/.*_//);
+    if ! grep -qFx up "/sys/class/net/$IF/operstate" 2>/dev/null; then
+        # In containers, be more permissive about interface monitoring
+        if ! is_lxc_container; then
+            rm "$f";
+        fi
+    fi;
 done
 
 # Create a 'state' directory. Not sure why we need to do this manually.

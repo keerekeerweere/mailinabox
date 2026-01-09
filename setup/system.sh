@@ -83,7 +83,10 @@ fi
 # Set the systemd journal log retention from infinite to 10 days,
 # since over time the logs take up a large amount of space.
 # (See https://discourse.mailinabox.email/t/journalctl-reclaim-space-on-small-mailinabox/6728/11.)
-tools/editconf.py /etc/systemd/journald.conf MaxRetentionSec=10day
+# Skip in containers where journal management may be handled differently
+if ! is_lxc_container; then
+	tools/editconf.py /etc/systemd/journald.conf MaxRetentionSec=10day
+fi
 
 # ### Improve server privacy
 
@@ -246,14 +249,25 @@ dd if=/dev/random of=/dev/urandom bs=1 count=32 2> /dev/null
 # is really any good on virtualized systems, we'll also seed from Ubuntu's
 # pollinate servers:
 
-pollinate  -q -r
+# Try to seed entropy from Ubuntu's pollinate servers, but don't fail if network is restricted
+if ! is_lxc_container || curl -s --connect-timeout 5 --max-time 10 entropy.ubuntu.com >/dev/null 2>&1; then
+	pollinate -q -r 2>/dev/null || echo "Warning: Could not connect to entropy server"
+else
+	echo "Skipping pollinate in container with restricted network access"
+fi
 
 # Between these two, we really ought to be all set.
 
 # We need an ssh key to store backups via rsync, if it doesn't exist create one
 if [ ! -f /root/.ssh/id_rsa_miab ]; then
 	echo 'Creating SSH key for backup…'
-	ssh-keygen -t rsa -b 2048 -a 100 -f /root/.ssh/id_rsa_miab -N '' -q
+	# In containers with low entropy, reduce key derivation rounds
+	if is_lxc_container; then
+		ssh-keygen -t rsa -b 2048 -a 10 -f /root/.ssh/id_rsa_miab -N '' -q 2>/dev/null || \
+		echo "Warning: SSH key generation failed in container environment"
+	else
+		ssh-keygen -t rsa -b 2048 -a 100 -f /root/.ssh/id_rsa_miab -N '' -q
+	fi
 fi
 
 # ### Package maintenance
@@ -380,20 +394,23 @@ if ! grep -q "max-recursion-queries " /etc/bind/named.conf.options; then
 	sed -i "s/^}/\n\tmax-recursion-queries 100;\n}/" /etc/bind/named.conf.options
 fi
 
-# First we'll disable systemd-resolved's management of resolv.conf and its stub server.
-# Breaking the symlink to /run/systemd/resolve/stub-resolv.conf means
-# systemd-resolved will read it for DNS servers to use. Put in 127.0.0.1,
-# which is where bind9 will be running. Obviously don't do this before
-# installing bind9 or else apt won't be able to resolve a server to
-# download bind9 from.
-rm -f /etc/resolv.conf
-tools/editconf.py /etc/systemd/resolved.conf DNSStubListener=no
-echo "nameserver 127.0.0.1" > /etc/resolv.conf
+# Configure DNS resolution. In containers, DNS is typically managed by the host,
+# so we need to be more careful about systemd-resolved configuration.
+if ! is_lxc_container; then
+	# Standard DNS configuration for VMs
+	rm -f /etc/resolv.conf
+	tools/editconf.py /etc/systemd/resolved.conf DNSStubListener=no
+	echo "nameserver 127.0.0.1" > /etc/resolv.conf
+	systemctl restart systemd-resolved
+else
+	# In containers, DNS is managed by the host. Just ensure we can resolve locally.
+	if ! grep -q "127.0.0.1" /etc/resolv.conf 2>/dev/null; then
+		echo "nameserver 127.0.0.1" >> /etc/resolv.conf
+	fi
+fi
 
 # Restart the DNS services.
-
 restart_service bind9
-systemctl restart systemd-resolved
 
 # ### Fail2Ban Service
 
